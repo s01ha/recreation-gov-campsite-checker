@@ -16,7 +16,7 @@ from enums.emoji import Emoji
 from utils import formatter
 from utils.camping_argparser import CampingArgumentParser
 import os
-import difflib
+import requests
 
 LOG = logging.getLogger(__name__)
 log_formatter = logging.Formatter(
@@ -331,9 +331,44 @@ def main(parks, json_output=False):
             pretty_output = json.dumps(new_json_data, indent=4)
             with open("campsites.json", "w") as json_file:
                 json_file.write(pretty_output)
+            
+            output, has_availabilities = generate_human_output(
+                info_by_park_id,
+                args.start_date,
+                args.end_date,
+                args.show_campsite_info,
+            )
+            print(output)
+
+            # Send a notification to the user
+            title = f"*Changed campsites availability*\n"
+            message = title + escape_markdown(output)
+            if args.chat_id and args.bot_token:
+                send_telegram_message(args.chat_id, args.bot_token, message)
+
     
     return has_availabilities
 
+def send_telegram_message(chat_id, bot_token, message):
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    data = {
+        "chat_id": chat_id,
+        "text": message,
+        "parse_mode": "MarkdownV2"
+    }
+    response = requests.post(url, data=data)
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"Error sending message to Telegram: {e.response.text}")
+        raise
+
+def escape_markdown(text):
+    """Escape markdown characters."""
+    escape_chars = [ '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' ]
+    for char in escape_chars:
+        text = text.replace(char, f"\\{char}")
+    return text
 
 if __name__ == "__main__":
     parser = CampingArgumentParser()
