@@ -71,6 +71,14 @@ class CampingArgumentParser(argparse.ArgumentParser):
                 "File with site IDs to exclude"
             ),
         )
+        self.add_argument(
+            "--chat-id",
+            help="Chat ID for notification services"
+        )
+        self.add_argument(
+            "--bot-token",
+            help="Bot token for authentication"
+        )
         parks_group = self.add_mutually_exclusive_group(required=True)
         parks_group.add_argument(
             "--parks",
