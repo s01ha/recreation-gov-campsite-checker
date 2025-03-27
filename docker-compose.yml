@@ -3,3 +3,5 @@ services:
     container_name: recreation-gov-campsite-checker
     build: .
     restart: unless-stopped
+    env_file:
+      - .env
