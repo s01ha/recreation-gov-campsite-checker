@@ -385,6 +385,8 @@ def escape_markdown(text):
 if __name__ == "__main__":
     parser = CampingArgumentParser()
     args = parser.parse_args()
+
+    print("-" * 80)
     print(args)
 
     if args.debug:
