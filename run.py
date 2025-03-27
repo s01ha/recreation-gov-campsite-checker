@@ -320,7 +320,15 @@ def main(parks, json_output=False):
         )
 
     output, has_availabilities = generate_json_output(info_by_park_id)
-    
+
+    msg, has_availabilities = generate_human_output(
+        info_by_park_id,
+        args.start_date,
+        args.end_date,
+        args.show_campsite_info,
+    )
+    print(msg)
+
     # If campsites.json exists, compare old data with new output by parsing JSON data
     if os.path.exists(CAMPSITES_JSON):
         with open(CAMPSITES_JSON, "r") as old_file:
@@ -338,14 +346,6 @@ def main(parks, json_output=False):
             with open(CAMPSITES_JSON, "w") as json_file:
                 json_file.write(pretty_output)
             
-            msg, has_availabilities = generate_human_output(
-                info_by_park_id,
-                args.start_date,
-                args.end_date,
-                args.show_campsite_info,
-            )
-            print(msg)
-
             # Send a notification to the user
             title = f"*Changed campsites availability*\n"
             message = title + escape_markdown(msg)
@@ -385,6 +385,7 @@ def escape_markdown(text):
 if __name__ == "__main__":
     parser = CampingArgumentParser()
     args = parser.parse_args()
+    print(args)
 
     if args.debug:
         LOG.setLevel(logging.DEBUG)
