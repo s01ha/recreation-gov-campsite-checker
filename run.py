@@ -242,6 +242,11 @@ def generate_human_output(
                         site_id=site_id
                     )
                 )
+                out.append(
+                    "    https://www.recreation.gov/camping/campsites/{site_id}".format(
+                        site_id=site_id
+                    )
+                )
                 for date in dates:
                     out.append(
                         "    * {start} -> {end}".format(
