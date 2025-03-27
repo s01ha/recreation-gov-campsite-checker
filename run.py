@@ -292,6 +292,10 @@ def remove_comments(lines: list[str]) -> list[str]:
 
 
 def main(parks, json_output=False):
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    CAMPSITES_JSON = os.path.join(SCRIPT_DIR, "campsites.json")
+    print(f"Campsite JSON file: {CAMPSITES_JSON}")
+
     excluded_site_ids = []
 
     if args.exclusion_file:
@@ -316,8 +320,8 @@ def main(parks, json_output=False):
     output, has_availabilities = generate_json_output(info_by_park_id)
     
     # If campsites.json exists, compare old data with new output by parsing JSON data
-    if os.path.exists("campsites.json"):
-        with open("campsites.json", "r") as old_file:
+    if os.path.exists(CAMPSITES_JSON):
+        with open(CAMPSITES_JSON, "r") as old_file:
             try:
                 old_json_data = json.load(old_file)
             except json.JSONDecodeError:
@@ -329,23 +333,29 @@ def main(parks, json_output=False):
     
             # Prettify JSON output and write it to a file named "campsites.json"
             pretty_output = json.dumps(new_json_data, indent=4)
-            with open("campsites.json", "w") as json_file:
+            with open(CAMPSITES_JSON, "w") as json_file:
                 json_file.write(pretty_output)
             
-            output, has_availabilities = generate_human_output(
+            msg, has_availabilities = generate_human_output(
                 info_by_park_id,
                 args.start_date,
                 args.end_date,
                 args.show_campsite_info,
             )
-            print(output)
+            print(msg)
 
             # Send a notification to the user
             title = f"*Changed campsites availability*\n"
-            message = title + escape_markdown(output)
+            message = title + escape_markdown(msg)
             if args.chat_id and args.bot_token:
                 send_telegram_message(args.chat_id, args.bot_token, message)
-
+        else:
+            print("No differences found in campsites.json.")
+    else:
+        # Prettify JSON output and write it to a file named "campsites.json"
+        pretty_output = json.dumps(output, indent=4)
+        with open(CAMPSITES_JSON, "w") as json_file:
+            json_file.write(pretty_output)
     
     return has_availabilities
 
