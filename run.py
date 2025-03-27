@@ -295,6 +295,8 @@ def main(parks, json_output=False):
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     CAMPSITES_JSON = os.path.join(SCRIPT_DIR, "campsites.json")
     print(f"Campsite JSON file: {CAMPSITES_JSON}")
+    print(f"Parks: {parks}")
+    print(f"Duration: {args.start_date} to {args.end_date}")
 
     excluded_site_ids = []
 
