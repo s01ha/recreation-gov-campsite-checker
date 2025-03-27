@@ -386,7 +386,7 @@ if __name__ == "__main__":
     parser = CampingArgumentParser()
     args = parser.parse_args()
 
-    print({datetime.now()} + " " + "-" * 80)
+    print(datetime.now(), "-" * 80)
     print(args)
 
     if args.debug:
