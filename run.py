@@ -332,7 +332,6 @@ def main(parks, json_output=False):
         args.end_date,
         args.show_campsite_info,
     )
-    print(msg)
 
     # If campsites.json exists, compare old data with new output by parsing JSON data
     if os.path.exists(CAMPSITES_JSON):
@@ -345,6 +344,8 @@ def main(parks, json_output=False):
         if old_json_data != new_json_data:
             print("Differences found in campsites.json:")
             print(output)
+            print("-" * 50)
+            print(msg)
     
             # Prettify JSON output and write it to a file named "campsites.json"
             pretty_output = json.dumps(new_json_data, indent=4)
