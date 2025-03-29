@@ -79,6 +79,27 @@ class CampingArgumentParser(argparse.ArgumentParser):
             "--bot-token",
             help="Bot token for authentication"
         )
+        self.add_argument(
+            "--selenium-host",
+            help="Hostname or IP address of the Selenium server",
+            default="localhost",
+        )
+        self.add_argument(
+            "--selenium-port",
+            help="Port number of the Selenium server",
+            type=int,
+            default=4444,
+        )
+        self.add_argument(
+            "--username",
+            help="Username for login authentication",
+            required=True,
+        )
+        self.add_argument(
+            "--password",
+            help="Password for login authentication",
+            required=True,
+        )
         parks_group = self.add_mutually_exclusive_group(required=True)
         parks_group.add_argument(
             "--parks",
