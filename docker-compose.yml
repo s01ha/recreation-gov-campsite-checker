@@ -5,3 +5,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    depends_on:
+      - selenium
+  selenium:
+    container_name: recreation-gov-campsite-checker-selenium
+    image: selenium/standalone-chrome:latest
+    shm_size: 2gb
