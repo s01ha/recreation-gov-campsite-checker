@@ -49,6 +49,13 @@ class CampingArgumentParser(argparse.ArgumentParser):
             ),
         )
         self.add_argument(
+            "--campsite-type-excluded",
+            help=(
+                "Exclude campsites with types containing specific keywords. "
+                "Use '|' to separate multiple keywords (e.g., 'group|tent')."
+            ),
+        )
+        self.add_argument(
             "--json-output",
             action="store_true",
             help=(

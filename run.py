@@ -36,7 +36,7 @@ LOG.addHandler(sh)
 
 
 def get_park_information(
-    park_id, start_date, end_date, campsite_type=None, campsite_ids=(), excluded_site_ids=[]
+    park_id, start_date, end_date, campsite_type=None, campsite_ids=(), excluded_site_ids=[], campsite_type_excluded=None
 ):
     """
     This function consumes the user intent, collects the necessary information
@@ -75,10 +75,25 @@ def get_park_information(
     # Filter by campsite_type if necessary.
     data = {}
 
+    excluded_keywords = []
+    if campsite_type_excluded:
+        excluded_keywords = campsite_type_excluded.split('|')
+    LOG.debug(
+        "Excluding campsites with types containing these keywords: {}".format(
+            excluded_keywords
+        )
+    )
+
     for month_data in api_data:
         for campsite_id, campsite_data in month_data["campsites"].items():
             if campsite_id in excluded_site_ids:
                 continue
+
+            if any(keyword.lower() in campsite_data["campsite_type"].lower() for keyword in excluded_keywords):
+                LOG.debug(
+                    f"Excluding campsite {campsite_id} with type {campsite_data['campsite_type']}")
+                continue
+
             available = []
             a = data.setdefault(campsite_id, [])
             for date, availability_value in campsite_data[
@@ -202,10 +217,10 @@ def consecutive_nights(available, nights):
 
 
 def check_park(
-    park_id, start_date, end_date, campsite_type, campsite_ids=(), nights=None, weekends_only=False, excluded_site_ids=[],
+    park_id, start_date, end_date, campsite_type, campsite_ids=(), nights=None, weekends_only=False, excluded_site_ids=[], campsite_type_excluded=None
 ):
     park_information = get_park_information(
-        park_id, start_date, end_date, campsite_type, campsite_ids, excluded_site_ids=excluded_site_ids,
+        park_id, start_date, end_date, campsite_type, campsite_ids, excluded_site_ids=excluded_site_ids, campsite_type_excluded=campsite_type_excluded,
     )
     LOG.debug(
         "Information for park {}: {}".format(
@@ -445,6 +460,7 @@ def main(parks, json_output=False):
             nights=args.nights,
             weekends_only=args.weekends_only,
             excluded_site_ids=excluded_site_ids,
+            campsite_type_excluded=args.campsite_type_excluded,
         )
 
     output, has_availabilities = generate_json_output(info_by_park_id)
