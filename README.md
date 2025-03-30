@@ -134,7 +134,7 @@ I left my API keys in here but don't exploit them ty thanks.
 
 ## Docker Compose Setup
 
-Follow these steps to set up and run the application using Docker Compose:
+Follow these steps to set up and run the application periodically using Docker Compose:
 
 ### Clone the Repository
 Clone this repository to your local machine:
@@ -171,13 +171,20 @@ Edit the `.env` file to configure the necessary variables.
   - `SELENIUM_PORT`: Port number of the Selenium server.
 - Otherwise, the default settings will use the Selenium container provided in the `docker-compose.yml`.
 
+### Set Up Crontab
+To ensure the script runs periodically, configure a crontab entry. This allows the application to check campsite availability at regular intervals. For example, to run the script every minute, add the following line to your crontab file:
+```bash
+* * * * *   /app/run.sh > /proc/1/fd/1 2>/proc/1/fd/2
+```
+This will execute the script and log the output appropriately.
+
 ### Run Docker Compose
 Start the application using Docker Compose:
 ```bash
 docker-compose up -d
 ```
 
-If everything is configured correctly, you should receive a Telegram notification within 1 minute.
+The application will now run continuously, and campsite availability will be checked periodically as configured in the crontab. If everything is set up correctly, you should receive a Telegram notification within 1 minute.
 
 ## Donate
 
