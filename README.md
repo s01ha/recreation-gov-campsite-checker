@@ -131,3 +131,56 @@ You'll want to make the app on another account (like a bot account), not your ow
 I left my API keys in here but don't exploit them ty thanks.
 
 **Thanks to https://github.com/bri-bri/yosemite-camping for getting me most of the way there for the old version.**
+
+## Docker Compose Setup
+
+Follow these steps to set up and run the application using Docker Compose:
+
+### Clone the Repository
+Clone this repository to your local machine:
+```bash
+git clone https://github.com/your-username/recreation-gov-campsite-checker.git
+cd recreation-gov-campsite-checker
+```
+
+### Configure the `.env` File
+Edit the `.env` file to configure the necessary variables.
+
+#### Recreation.gov Search Settings
+- `PARKS`: Space-separated list of park IDs to search.
+- `START_DATE`: Start date for the search in `YYYY-MM-DD` format.
+- `END_DATE`: End date for the search in `YYYY-MM-DD` format.
+- `NIGHTS`: Number of consecutive nights to search for.
+- `CAMPSITE_TYPE_EXCLUDED`: Keywords to exclude specific campsite types (e.g., `group`).
+
+#### Telegram Bot Setup
+- Create a bot using [@BotFather](https://t.me/BotFather) and obtain the bot token.
+- Use [@get_id_bot](https://t.me/get_id_bot) to retrieve your chat ID.
+- Set the following variables in `.env`:
+  - `BOT_TOKEN`: Your Telegram bot token.
+  - `CHAT_ID`: Your Telegram chat ID.
+
+#### Recreation.gov Account Information
+- If you want to enable automatic reservations, provide your Recreation.gov account credentials:
+  - `USERNAME`: Your Recreation.gov username.
+  - `PASSWORD`: Your Recreation.gov password.
+
+#### Selenium Configuration
+- If a separate Selenium server is required, update the following variables:
+  - `SELENIUM_HOST`: Hostname or IP address of the Selenium server.
+  - `SELENIUM_PORT`: Port number of the Selenium server.
+- Otherwise, the default settings will use the Selenium container provided in the `docker-compose.yml`.
+
+### Run Docker Compose
+Start the application using Docker Compose:
+```bash
+docker-compose up -d
+```
+
+If everything is configured correctly, you should receive a Telegram notification within 1 minute.
+
+## Donate
+
+If you find this project useful, consider making a donation to support its development:
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-blue.svg)](https://www.paypal.com/donate/?business=YUHM53ZPKE6WN&no_recurring=0&item_name=Support+the+Developer%21+%E2%98%95+Buy+me+a+coffee+and+help+fuel+more+great+work%21&currency_code=USD)
