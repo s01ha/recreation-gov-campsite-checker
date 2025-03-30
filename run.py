@@ -311,13 +311,13 @@ def generate_human_output(
     if has_availabilities:
         out.insert(
             0,
-            "there are campsites available from {start} to {end}!!!".format(
+            "Campsites available from {start} to {end}!!!".format(
                 start=start_date.strftime(DateFormat.INPUT_DATE_FORMAT.value),
                 end=end_date.strftime(DateFormat.INPUT_DATE_FORMAT.value),
             ),
         )
     else:
-        out.insert(0, "There are no campsites available :(")
+        out.insert(0, "No campsites available :(")
     return "\n".join(out), has_availabilities
 
 
