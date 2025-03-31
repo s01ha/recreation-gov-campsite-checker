@@ -619,9 +619,9 @@ def main(parks, json_output=False):
                             continue
                         print("Campsite page loaded.")
                         
-                        # Format dates: date should look like April 3, 2025
-                        start_date_formatted = datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %d, %Y")
-                        end_date_formatted = datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %d, %Y")
+                        # Format dates: date should look like 'April 3, 2025', not 'April 03, 2025'
+                        start_date_formatted = datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %-d, %Y")
+                        end_date_formatted = datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %-d, %Y")
 
                         for idx in range(5):
                             # Find all headers with class 'heading h5-normal'
