@@ -562,10 +562,6 @@ def login(driver, username, password):
     return True
 
 
-def loop_until_success():
-    pass
-
-
 def main(parks, json_output=False):
     start_time = time()
 
@@ -614,6 +610,7 @@ def main(parks, json_output=False):
             if is_odd
             else "https://www.recreation.gov/account/profile"
         )
+        is_odd = not is_odd
         driver.get(stay_signed_in)
 
         info_by_park_id = {}
