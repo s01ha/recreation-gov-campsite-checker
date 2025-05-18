@@ -869,9 +869,9 @@ def main(parks, json_output=False):
         if not args.loop:
             break
 
-        processd_time = time() - start_time
-        print(f"Processed in {processd_time:.2f} seconds")
-        sleep(args.loop_interval - processd_time)
+        processed_time = time() - start_time
+        print(f"Processed in {processed_time:.2f} seconds")
+        sleep(args.loop_interval - processed_time)
 
     # Close the Selenium WebDriver
     driver.quit()
