@@ -8,3 +8,4 @@ __pycache__
 *egg-info
 campsites.json
 .github/prompts/**
+*.html
