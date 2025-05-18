@@ -7,3 +7,5 @@ __pycache__
 *.swp
 *egg-info
 campsites.json
+.github/prompts/**
+*.html

@@ -9,9 +9,7 @@ from enums.date_format import DateFormat
 class CampingArgumentParser(argparse.ArgumentParser):
     def __init__(self):
         super().__init__()
-        self.add_argument(
-            "--debug", "-d", action="store_true", help="Debug log level"
-        )
+        self.add_argument("--debug", "-d", action="store_true", help="Debug log level")
         self.add_argument(
             "--start-date",
             required=True,
@@ -68,24 +66,14 @@ class CampingArgumentParser(argparse.ArgumentParser):
         self.add_argument(
             "--weekends-only",
             action="store_true",
-            help=(
-                "Include only weekends (i.e. starting Friday or Saturday)"
-            ),
+            help=("Include only weekends (i.e. starting Friday or Saturday)"),
         )
         self.add_argument(
             "--exclusion-file",
-            help=(
-                "File with site IDs to exclude"
-            ),
+            help=("File with site IDs to exclude"),
         )
-        self.add_argument(
-            "--chat-id",
-            help="Chat ID for notification services"
-        )
-        self.add_argument(
-            "--bot-token",
-            help="Bot token for authentication"
-        )
+        self.add_argument("--chat-id", help="Chat ID for notification services")
+        self.add_argument("--bot-token", help="Bot token for authentication")
         self.add_argument(
             "--selenium-host",
             help="Hostname or IP address of the Selenium server",
@@ -103,6 +91,18 @@ class CampingArgumentParser(argparse.ArgumentParser):
         self.add_argument(
             "--password",
             help="Password for login authentication",
+        )
+        self.add_argument(
+            "--loop",
+            action="store_true",
+            default=False,
+            help="Enable continuous checking in a loop",
+        )
+        self.add_argument(
+            "--loop-interval",
+            type=int,
+            default=60,
+            help="Interval in seconds between loop iterations (default: 60)",
         )
         parks_group = self.add_mutually_exclusive_group(required=True)
         parks_group.add_argument(
@@ -137,9 +137,7 @@ class CampingArgumentParser(argparse.ArgumentParser):
         @classmethod
         def date(cls, date_str):
             try:
-                return datetime.strptime(
-                    date_str, DateFormat.INPUT_DATE_FORMAT.value
-                )
+                return datetime.strptime(date_str, DateFormat.INPUT_DATE_FORMAT.value)
             except ValueError as e:
                 msg = "Not a valid date: '{0}'.".format(date_str)
                 logging.critical(e)
