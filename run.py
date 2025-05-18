@@ -596,10 +596,11 @@ def main(parks, json_output=False):
         if driver:
             allow_reservation = login(driver, args.username, args.password)
             print(f"Login process took {time() - start_time:.2f} seconds")
-            start_time = time()
         else:
             print("Failed to create Selenium WebDriver instance.")
             allow_reservation = False
+
+    start_time = time()
 
     info_by_park_id = {}
     for park_id in parks:
@@ -656,7 +657,7 @@ def main(parks, json_output=False):
         with open(CAMPSITES_JSON, "w") as json_file:
             json_file.write(pretty_output)
 
-    if has_availabilities:
+    if has_availabilities and allow_reservation:
         #
         # Perform the necessary Selenium operations here
         #
@@ -853,8 +854,6 @@ def main(parks, json_output=False):
 
             # Close the Selenium WebDriver
             driver.quit()
-
-        return has_availabilities
 
 
 if __name__ == "__main__":
