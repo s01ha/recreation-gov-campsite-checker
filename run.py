@@ -3,28 +3,27 @@
 
 import json
 import logging
+import os
 import sys
+import time
+import urllib
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import count, groupby
 
+import requests
 from dateutil import rrule
-import urllib
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 from clients.recreation_client import RecreationClient
 from enums.date_format import DateFormat
 from enums.emoji import Emoji
 from utils import formatter
 from utils.camping_argparser import CampingArgumentParser
-import os
-import requests
-import time
-
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
 
 LOG = logging.getLogger(__name__)
 log_formatter = logging.Formatter(
@@ -36,7 +35,13 @@ LOG.addHandler(sh)
 
 
 def get_park_information(
-    park_id, start_date, end_date, campsite_type=None, campsite_ids=(), excluded_site_ids=[], campsite_type_excluded=None
+    park_id,
+    start_date,
+    end_date,
+    campsite_type=None,
+    campsite_ids=(),
+    excluded_site_ids=[],
+    campsite_type_excluded=None,
 ):
     """
     This function consumes the user intent, collects the necessary information
@@ -62,9 +67,7 @@ def get_park_information(
 
     # Get each first of the month for months in the range we care about.
     start_of_month = datetime(start_date.year, start_date.month, 1)
-    months = list(
-        rrule.rrule(rrule.MONTHLY, dtstart=start_of_month, until=end_date)
-    )
+    months = list(rrule.rrule(rrule.MONTHLY, dtstart=start_of_month, until=end_date))
 
     # Get data for each month.
     api_data = []
@@ -77,7 +80,7 @@ def get_park_information(
 
     excluded_keywords = []
     if campsite_type_excluded:
-        excluded_keywords = campsite_type_excluded.split('|')
+        excluded_keywords = campsite_type_excluded.split("|")
     LOG.debug(
         "Excluding campsites with types containing these keywords: {}".format(
             excluded_keywords
@@ -89,23 +92,22 @@ def get_park_information(
             if campsite_id in excluded_site_ids:
                 continue
 
-            if any(keyword.lower() in campsite_data["campsite_type"].lower() for keyword in excluded_keywords):
+            if any(
+                keyword.lower() in campsite_data["campsite_type"].lower()
+                for keyword in excluded_keywords
+            ):
                 LOG.debug(
-                    f"Excluding campsite {campsite_id} with type {campsite_data['campsite_type']}")
+                    f"Excluding campsite {campsite_id} with type {campsite_data['campsite_type']}"
+                )
                 continue
 
             available = []
             a = data.setdefault(campsite_id, [])
-            for date, availability_value in campsite_data[
-                "availabilities"
-            ].items():
+            for date, availability_value in campsite_data["availabilities"].items():
                 if availability_value != "Available":
                     continue
 
-                if (
-                    campsite_type
-                    and campsite_type != campsite_data["campsite_type"]
-                ):
+                if campsite_type and campsite_type != campsite_data["campsite_type"]:
                     continue
 
                 if (
@@ -120,6 +122,7 @@ def get_park_information(
 
     return data
 
+
 def is_weekend(date):
     weekday = date.weekday()
 
@@ -127,7 +130,11 @@ def is_weekend(date):
 
 
 def get_num_available_sites(
-    park_information, start_date, end_date, nights=None, weekends_only=False,
+    park_information,
+    start_date,
+    end_date,
+    nights=None,
+    weekends_only=False,
 ):
     maximum = len(park_information)
 
@@ -160,9 +167,7 @@ def get_num_available_sites(
         if not desired_available:
             continue
 
-        appropriate_consecutive_ranges = consecutive_nights(
-            desired_available, nights
-        )
+        appropriate_consecutive_ranges = consecutive_nights(desired_available, nights)
 
         if appropriate_consecutive_ranges:
             num_available += 1
@@ -186,9 +191,7 @@ def consecutive_nights(available, nights):
     date range for this site that is available.
     """
     ordinal_dates = [
-        datetime.strptime(
-            dstr, DateFormat.ISO_DATE_FORMAT_RESPONSE.value
-        ).toordinal()
+        datetime.strptime(dstr, DateFormat.ISO_DATE_FORMAT_RESPONSE.value).toordinal()
         for dstr in available
     ]
     c = count()
@@ -217,10 +220,24 @@ def consecutive_nights(available, nights):
 
 
 def check_park(
-    park_id, start_date, end_date, campsite_type, campsite_ids=(), nights=None, weekends_only=False, excluded_site_ids=[], campsite_type_excluded=None
+    park_id,
+    start_date,
+    end_date,
+    campsite_type,
+    campsite_ids=(),
+    nights=None,
+    weekends_only=False,
+    excluded_site_ids=[],
+    campsite_type_excluded=None,
 ):
     park_information = get_park_information(
-        park_id, start_date, end_date, campsite_type, campsite_ids, excluded_site_ids=excluded_site_ids, campsite_type_excluded=campsite_type_excluded,
+        park_id,
+        start_date,
+        end_date,
+        campsite_type,
+        campsite_ids,
+        excluded_site_ids=excluded_site_ids,
+        campsite_type_excluded=campsite_type_excluded,
     )
     LOG.debug(
         "Information for park {}: {}".format(
@@ -229,7 +246,11 @@ def check_park(
     )
     park_name = RecreationClient.get_park_name(park_id)
     current, maximum, availabilities_filtered = get_num_available_sites(
-        park_information, start_date, end_date, nights=nights, weekends_only=weekends_only,
+        park_information,
+        start_date,
+        end_date,
+        nights=nights,
+        weekends_only=weekends_only,
     )
     return current, maximum, availabilities_filtered, park_name
 
@@ -248,7 +269,9 @@ def merge_consecutive_dates(dates):
         return []
 
     # Convert date strings to datetime objects for processing
-    sorted_dates = sorted(dates, key=lambda x: datetime.strptime(x["start"], "%Y-%m-%d"))
+    sorted_dates = sorted(
+        dates, key=lambda x: datetime.strptime(x["start"], "%Y-%m-%d")
+    )
     merged = [sorted_dates[0]]
 
     for current in sorted_dates[1:]:
@@ -258,7 +281,11 @@ def merge_consecutive_dates(dates):
 
         # Check if the current range is consecutive or overlapping
         if current_start <= last_end + timedelta(days=1):
-            last["end"] = max(last["end"], current["end"], key=lambda d: datetime.strptime(d, "%Y-%m-%d"))
+            last["end"] = max(
+                last["end"],
+                current["end"],
+                key=lambda d: datetime.strptime(d, "%Y-%m-%d"),
+            )
         else:
             merged.append(current)
 
@@ -352,11 +379,7 @@ def remove_comments(lines: list[str]) -> list[str]:
 
 def send_telegram_message(chat_id, bot_token, message):
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    data = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "MarkdownV2"
-    }
+    data = {"chat_id": chat_id, "text": message, "parse_mode": "MarkdownV2"}
     response = requests.post(url, data=data)
     try:
         response.raise_for_status()
@@ -367,14 +390,33 @@ def send_telegram_message(chat_id, bot_token, message):
 
 def escape_markdown(text):
     """Escape markdown characters."""
-    escape_chars = [ '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!' ]
+    escape_chars = [
+        "_",
+        "*",
+        "[",
+        "]",
+        "(",
+        ")",
+        "~",
+        "`",
+        ">",
+        "#",
+        "+",
+        "-",
+        "=",
+        "|",
+        "{",
+        "}",
+        ".",
+        "!",
+    ]
     for char in escape_chars:
         text = text.replace(char, f"\\{char}")
     return text
 
 
 def login(username, password):
-    login_url = 'https://www.recreation.gov/api/accounts/login'
+    login_url = "https://www.recreation.gov/api/accounts/login"
 
     headers = {
         "authority": "www.recreation.gov",
@@ -382,13 +424,10 @@ def login(username, password):
         "content-type": "application/json;charset=UTF-8",
         "origin": "https://www.recreation.gov",
         "referer": "https://www.recreation.gov/",
-        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"
+        "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36",
     }
 
-    payload = {
-        'username': username,
-        'password': password
-    }
+    payload = {"username": username, "password": password}
 
     with requests.Session() as session:
         session.headers.update(headers)
@@ -413,17 +452,17 @@ def add_to_cart(session, access_token, park_id, campsite_id, start_date, end_dat
         "authorization": f"Bearer {access_token}",
     }
     session.headers.update(headers)
-    url = f'https://www.recreation.gov/api/camps/reservations/campgrounds/262763/multi'
+    url = f"https://www.recreation.gov/api/camps/reservations/campgrounds/262763/multi"
     payload = {
         "reservations": [
             {
-            "account_id": "cpl8p1gvae84ss9ug750",
-            "campsite_id": "10178753",
-            "check_in": "2025-05-04T00:00:00.000Z",
-            "check_out": "2025-05-05T00:00:00.000Z",
+                "account_id": "cpl8p1gvae84ss9ug750",
+                "campsite_id": "10178753",
+                "check_in": "2025-05-04T00:00:00.000Z",
+                "check_out": "2025-05-05T00:00:00.000Z",
             }
         ],
-        }
+    }
     print(url)
     response = session.post(url, json=payload)
     if response.status_code == 200:
@@ -434,7 +473,98 @@ def add_to_cart(session, access_token, park_id, campsite_id, start_date, end_dat
         print(f"Error: {response.json()}")
 
 
+def create_selenium_driver(selenium_host, selenium_port):
+    """
+    Creates and returns a Selenium WebDriver instance connected to a remote Selenium server.
+
+    Args:
+        selenium_host (str): The hostname or IP address of the Selenium server.
+        selenium_port (int or str): The port number on which the Selenium server is running.
+
+    Returns:
+        selenium.webdriver.Remote or None: A Selenium WebDriver instance if the connection is successful;
+        otherwise, None if the server is unreachable or driver initialization fails.
+
+    Raises:
+        None. All exceptions are caught and handled within the function.
+
+    Notes:
+        - The function checks the Selenium server status before attempting to create the driver.
+        - Chrome browser options are configured to disable GPU and start in fullscreen mode.
+        - Uncomment the '--headless' argument to run Chrome in headless mode.
+    """
+    # Correctly construct the Selenium WebDriver URL
+    selenium_url = f"http://{selenium_host}:{selenium_port}/wd/hub"
+    print(f"Selenium URL: {selenium_url}")
+
+    # Validate the Selenium server connection
+    try:
+        response = requests.get(f"http://{selenium_host}:{selenium_port}/status")
+        if response.status_code != 200:
+            print("Selenium server is not running or not reachable.")
+            return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error connecting to Selenium server: {e}")
+        return None
+
+    # Create the Selenium WebDriver instance
+    chrome_options = webdriver.ChromeOptions()
+    # chrome_options.add_argument('--headless')
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--start-fullscreen")
+    try:
+        driver = webdriver.Remote(command_executor=selenium_url, options=chrome_options)
+        return driver
+    except Exception as e:
+        print(f"Error initializing Selenium WebDriver: {e}")
+        return None
+
+
+def login(driver, username, password):
+    #
+    # Login to recreation.gov
+    #
+
+    # Open the login page
+    driver.get("https://www.recreation.gov/log-in")
+
+    # Wait for the page to load the field name 'email'
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "email")))
+    print("Page loaded.")
+
+    # Find the username and password fields and enter the credentials
+    username_field = driver.find_element(By.XPATH, "//input[@id='email']")
+    password_field = driver.find_element(
+        By.XPATH, "//input[@id='rec-acct-sign-in-password']"
+    )
+    username_field.send_keys(username)
+    password_field.send_keys(password)
+    print("Credentials entered.")
+
+    # Find the login button and click it
+    # login_submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+    login_submit_button = driver.find_element(By.CLASS_NAME, "rec-acct-sign-in-btn")
+
+    # Set focus on button
+    driver.execute_script("arguments[0].focus();", login_submit_button)
+    driver.execute_script("arguments[0].click();", login_submit_button)
+    print("Login button clicked.")
+
+    # Wait for class 'nav-profile-dropdown'
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "nav-profile-dropdown"))
+        )
+    except TimeoutException:
+        print("Login failed or took too long.")
+        return False
+    print("Login successful.")
+    return True
+
+
 def main(parks, json_output=False):
+    start_time = time()
+
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     CAMPSITES_JSON = os.path.join(SCRIPT_DIR, "campsites.json")
     print(f"Campsite JSON file: {CAMPSITES_JSON}")
@@ -448,6 +578,28 @@ def main(parks, json_output=False):
             excluded_site_ids = f.readlines()
             excluded_site_ids = [l.strip() for l in excluded_site_ids]
             excluded_site_ids = remove_comments(excluded_site_ids)
+
+    allow_reservation = True
+
+    # Ensure required arguments are provided for adding to cart
+    if not args.username or not args.password or not args.selenium_host:
+        print("Username, password, and Selenium host are required for adding to cart.")
+        allow_reservation = False
+
+    # Create Selenium WebDriver instance
+    if allow_reservation:
+        # Get the Selenium host and port from command line arguments
+        selenium_host = args.selenium_host
+        selenium_port = args.selenium_port if args.selenium_port else 4444
+
+        driver = create_selenium_driver(selenium_host, selenium_port)
+        if driver:
+            allow_reservation = login(driver, args.username, args.password)
+            print(f"Login process took {time() - start_time:.2f} seconds")
+            start_time = time()
+        else:
+            print("Failed to create Selenium WebDriver instance.")
+            allow_reservation = False
 
     info_by_park_id = {}
     for park_id in parks:
@@ -485,12 +637,12 @@ def main(parks, json_output=False):
             print(output)
             print("-" * 50)
             print(msg)
-    
+
             # Prettify JSON output and write it to a file named "campsites.json"
             pretty_output = json.dumps(new_json_data, indent=4)
             with open(CAMPSITES_JSON, "w") as json_file:
                 json_file.write(pretty_output)
-            
+
             # Send a notification to the user
             title = f"*Changed campsites availability*\n"
             message = title + escape_markdown(msg)
@@ -503,177 +655,151 @@ def main(parks, json_output=False):
         pretty_output = json.dumps(output, indent=4)
         with open(CAMPSITES_JSON, "w") as json_file:
             json_file.write(pretty_output)
-    
+
     if has_availabilities:
-        # Ensure required arguments are provided
-        if not args.username or not args.password or not args.selenium_host:
-            print("Username, password, and Selenium host are required for adding to cart.")
-            return has_availabilities
-        
-
-        #
-        # Create Selenium WebDriver instance
-        #
-
-        # Get the Selenium host and port from command line arguments
-        selenium_host = args.selenium_host
-        selenium_port = args.selenium_port if args.selenium_port else 4444
-        
-        # Correctly construct the Selenium WebDriver URL
-        selenium_url = f"http://{selenium_host}:{selenium_port}/wd/hub"
-        print(f"Selenium URL: {selenium_url}")
-
-        # Validate the Selenium server connection
-        try:
-            response = requests.get(f"http://{selenium_host}:{selenium_port}/status")
-            if response.status_code != 200:
-                print("Selenium server is not running or not reachable.")
-                return has_availabilities
-        except requests.exceptions.RequestException as e:
-            print(f"Error connecting to Selenium server: {e}")
-            return has_availabilities
-
-        # Create the Selenium WebDriver instance
-        chrome_options = webdriver.ChromeOptions()
-        # chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--disable-gpu')
-        chrome_options.add_argument('--start-fullscreen')
-        try:
-            driver = webdriver.Remote(
-                command_executor=selenium_url,
-                options=chrome_options
-            )
-        except Exception as e:
-            print(f"Error initializing Selenium WebDriver: {e}")
-            return has_availabilities
-
-        
         #
         # Perform the necessary Selenium operations here
         #
         try:
-            #
-            # Login to recreation.gov
-            #
-
-            # Open the login page
-            driver.get("https://www.recreation.gov/log-in")
-            
-            # Wait for the page to load the field name 'email'
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.NAME, "email"))
-            )
-            print("Page loaded.")
-            
-            # Find the username and password fields and enter the credentials
-            username_field = driver.find_element(By.XPATH, "//input[@id='email']")
-            password_field = driver.find_element(By.XPATH, "//input[@id='rec-acct-sign-in-password']")
-            username_field.send_keys(args.username)
-            password_field.send_keys(args.password)
-            print("Credentials entered.")
-
-            # Find the login button and click it
-            # login_submit_button = driver.find_element(By.XPATH, "//button[@type='submit']")
-            login_submit_button = driver.find_element(By.CLASS_NAME, "rec-acct-sign-in-btn")
-
-            # Set focus on button
-            driver.execute_script("arguments[0].focus();", login_submit_button)
-            driver.execute_script("arguments[0].click();", login_submit_button)
-            print("Login button clicked.")
-            
-            # Wait for class 'nav-profile-dropdown'
-            try:
-                WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "nav-profile-dropdown"))
-                )
-            except TimeoutException:
-                print("Login failed or took too long.")
-                return has_availabilities
-            print("Login successful.")
-
-
             #
             # Add to cart
             #
             for park_id in parks:
                 for site_id, dates in info_by_park_id[park_id][2].items():
                     for date in merge_consecutive_dates(dates):
-                        
+
                         # Format the start and end dates
                         start_date = date["start"]
                         end_date = date["end"]
-                        print(f"Adding site {site_id} to cart from {start_date} to {end_date}")
+                        print(
+                            f"Adding site {site_id} to cart from {start_date} to {end_date}"
+                        )
 
                         # Open the campsite page
-                        campsite_url = f"https://www.recreation.gov/camping/campsites/{site_id}"
+                        campsite_url = (
+                            f"https://www.recreation.gov/camping/campsites/{site_id}"
+                        )
                         driver.get(campsite_url)
                         print(f"Opened campsite page: {campsite_url}")
 
                         # Wait for the button with class 'next-prev-button'
                         try:
                             WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.CLASS_NAME, "next-prev-button"))
+                                EC.presence_of_element_located(
+                                    (By.CLASS_NAME, "next-prev-button")
+                                )
                             )
                         except TimeoutException:
                             print("Failed to load the campsite page or took too long.")
                             continue
                         print("Campsite page loaded.")
-                        
+
                         # Format dates: date should look like 'April 3, 2025', not 'April 03, 2025'
-                        start_date_formatted = datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %-d, %Y")
-                        end_date_formatted = datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %-d, %Y")
+                        start_date_formatted = datetime.strptime(
+                            start_date, "%Y-%m-%d"
+                        ).strftime("%B %-d, %Y")
+                        end_date_formatted = datetime.strptime(
+                            end_date, "%Y-%m-%d"
+                        ).strftime("%B %-d, %Y")
 
                         for idx in range(5):
                             # Find all headers with class 'heading h5-normal'
-                            headers = driver.find_elements(By.XPATH, "//h2[@class='heading h5-normal']")
+                            headers = driver.find_elements(
+                                By.XPATH, "//h2[@class='heading h5-normal']"
+                            )
                             print([header.text for header in headers])
 
                             # Get the first day of next month from last header
                             # Header looks like this: "April 2025"
-                            next_month = datetime.strptime(headers[-1].text, "%B %Y") + timedelta(days=31)
+                            next_month = datetime.strptime(
+                                headers[-1].text, "%B %Y"
+                            ) + timedelta(days=31)
                             next_month_formatted = next_month.strftime("%B %Y")
                             print(f"Next month: {next_month_formatted}")
 
                             # Headers look like this: "April 2025"
                             # Check start date and end date is in the month of header
                             is_found = False
-                            start_date_month = datetime.strptime(start_date, "%Y-%m-%d").strftime("%B %Y")
-                            end_date_month = datetime.strptime(end_date, "%Y-%m-%d").strftime("%B %Y")
+                            start_date_month = datetime.strptime(
+                                start_date, "%Y-%m-%d"
+                            ).strftime("%B %Y")
+                            end_date_month = datetime.strptime(
+                                end_date, "%Y-%m-%d"
+                            ).strftime("%B %Y")
 
-                            if not (any(start_date_month in header.text for header in headers) and any(end_date_month in header.text for header in headers)):
-                                print("Start date and end date not found in the month header.")
+                            if not (
+                                any(
+                                    start_date_month in header.text
+                                    for header in headers
+                                )
+                                and any(
+                                    end_date_month in header.text for header in headers
+                                )
+                            ):
+                                print(
+                                    "Start date and end date not found in the month header."
+                                )
                                 # Find next button with class 'next-prev-button' and aria-label 'Next'
-                                next_button = driver.find_element(By.XPATH, "//button[@aria-label='Next']")
-                                driver.execute_script("arguments[0].focus();", next_button)
-                                driver.execute_script("arguments[0].click();", next_button)
+                                next_button = driver.find_element(
+                                    By.XPATH, "//button[@aria-label='Next']"
+                                )
+                                driver.execute_script(
+                                    "arguments[0].focus();", next_button
+                                )
+                                driver.execute_script(
+                                    "arguments[0].click();", next_button
+                                )
 
                                 # Wait for the next button with class 'next-prev-button' and aria-label 'Next'
                                 WebDriverWait(driver, 10).until(
-                                    EC.presence_of_element_located((By.XPATH, "//button[@aria-label='Next']"))
+                                    EC.presence_of_element_located(
+                                        (By.XPATH, "//button[@aria-label='Next']")
+                                    )
                                 )
-                                
+
                                 continue
                             else:
-                                print("Start date and end date found in the month header.")
-                                
+                                print(
+                                    "Start date and end date found in the month header."
+                                )
+
                                 # Find the button with the text "Clear Dates"
                                 # It cannot be existed in the page
                                 try:
-                                    clear_dates_button = driver.find_element(By.XPATH, "//button[.//span[text()='Clear Dates']]")
-                                    driver.execute_script("arguments[0].focus();", clear_dates_button)
-                                    driver.execute_script("arguments[0].click();", clear_dates_button)
+                                    clear_dates_button = driver.find_element(
+                                        By.XPATH,
+                                        "//button[.//span[text()='Clear Dates']]",
+                                    )
+                                    driver.execute_script(
+                                        "arguments[0].focus();", clear_dates_button
+                                    )
+                                    driver.execute_script(
+                                        "arguments[0].click();", clear_dates_button
+                                    )
                                     print("Clear Dates button clicked.")
                                 except Exception as e:
-                                    print(f"Clear Dates button not found or error occurred: {e}")
+                                    print(
+                                        f"Clear Dates button not found or error occurred: {e}"
+                                    )
 
                                 break
-                        
-                        # Find the div tag where aria-label contains start_date_formatted
-                        start_date_div = driver.find_element(By.XPATH, f"//div[contains(@aria-label, '{start_date_formatted}')]")
-                        end_date_div = driver.find_element(By.XPATH, f"//div[contains(@aria-label, '{end_date_formatted}')]")
 
-                        print(f"Start date div: {start_date_div.get_attribute('aria-label')}")
-                        print(f"End date div: {end_date_div.get_attribute('aria-label')}")
+                        # Find the div tag where aria-label contains start_date_formatted
+                        start_date_div = driver.find_element(
+                            By.XPATH,
+                            f"//div[contains(@aria-label, '{start_date_formatted}')]",
+                        )
+                        end_date_div = driver.find_element(
+                            By.XPATH,
+                            f"//div[contains(@aria-label, '{end_date_formatted}')]",
+                        )
+
+                        print(
+                            f"Start date div: {start_date_div.get_attribute('aria-label')}"
+                        )
+                        print(
+                            f"End date div: {end_date_div.get_attribute('aria-label')}"
+                        )
 
                         # Click the start date div
                         driver.execute_script("arguments[0].focus();", start_date_div)
@@ -688,22 +814,34 @@ def main(parks, json_output=False):
                         # Wait for the button with id 'add-cart-campsite'
                         try:
                             WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located((By.ID, "add-cart-campsite"))
+                                EC.presence_of_element_located(
+                                    (By.ID, "add-cart-campsite")
+                                )
                             )
                         except TimeoutException:
-                            print("Failed to load the add to cart button or took too long.")
+                            print(
+                                "Failed to load the add to cart button or took too long."
+                            )
                             continue
                         print("Add to cart button loaded.")
 
                         # Find the button with id 'add-cart-campsite'
-                        add_to_cart_button = driver.find_element(By.ID, "add-cart-campsite")
-                        driver.execute_script("arguments[0].focus();", add_to_cart_button)
-                        driver.execute_script("arguments[0].click();", add_to_cart_button)
+                        add_to_cart_button = driver.find_element(
+                            By.ID, "add-cart-campsite"
+                        )
+                        driver.execute_script(
+                            "arguments[0].focus();", add_to_cart_button
+                        )
+                        driver.execute_script(
+                            "arguments[0].click();", add_to_cart_button
+                        )
                         print("Add to cart button clicked.")
 
                         # Wait for the button with class 'change-campsite-date-btn'
                         WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located((By.CLASS_NAME, "change-campsite-date-btn"))
+                            EC.presence_of_element_located(
+                                (By.CLASS_NAME, "change-campsite-date-btn")
+                            )
                         )
                         print("Change campsite date button loaded.")
         except Exception as e:
