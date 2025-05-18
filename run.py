@@ -871,7 +871,9 @@ def main(parks, json_output=False):
 
         processed_time = time() - start_time
         print(f"Processed in {processed_time:.2f} seconds")
-        sleep(args.loop_interval - processed_time)
+        if processed_time < args.loop_interval:
+            print(f"Sleeping for {args.loop_interval - processed_time:.2f} seconds")
+            sleep(args.loop_interval - processed_time)
 
     # Close the Selenium WebDriver
     driver.quit()
