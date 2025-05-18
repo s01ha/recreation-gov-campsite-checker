@@ -862,6 +862,20 @@ def main(parks, json_output=False):
                                 )
                             )
                             print("Change campsite date button loaded.")
+
+                            # Send a message to Telegram
+                            # Message contains username, date range, and campsite URL
+                            message = (
+                                f"User: {args.username}\n"
+                                f"Added campsite {site_id} to cart from {start_date} to {end_date}\n"
+                                f"Link: {campsite_url}"
+                            )
+                            if args.chat_id and args.bot_token:
+                                send_telegram_message(
+                                    args.chat_id,
+                                    args.bot_token,
+                                    escape_markdown(message),
+                                )
             except Exception as e:
                 print(f"Error during WebDriver operation: {e}")
                 continue
