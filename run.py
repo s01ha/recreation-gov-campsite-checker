@@ -562,6 +562,10 @@ def login(driver, username, password):
     return True
 
 
+def loop_until_success():
+    pass
+
+
 def main(parks, json_output=False):
     start_time = time()
 
@@ -600,260 +604,279 @@ def main(parks, json_output=False):
             print("Failed to create Selenium WebDriver instance.")
             allow_reservation = False
 
-    start_time = time()
+    is_odd = False
 
-    info_by_park_id = {}
-    for park_id in parks:
-        info_by_park_id[park_id] = check_park(
-            park_id,
+    while True:
+        start_time = time()
+
+        stay_signed_in = (
+            "https://www.recreation.gov/cart"
+            if is_odd
+            else "https://www.recreation.gov/account/profile"
+        )
+        driver.get(stay_signed_in)
+
+        info_by_park_id = {}
+        for park_id in parks:
+            info_by_park_id[park_id] = check_park(
+                park_id,
+                args.start_date,
+                args.end_date,
+                args.campsite_type,
+                args.campsite_ids,
+                nights=args.nights,
+                weekends_only=args.weekends_only,
+                excluded_site_ids=excluded_site_ids,
+                campsite_type_excluded=args.campsite_type_excluded,
+            )
+
+        output, has_availabilities = generate_json_output(info_by_park_id)
+
+        msg, has_availabilities = generate_human_output(
+            info_by_park_id,
             args.start_date,
             args.end_date,
-            args.campsite_type,
-            args.campsite_ids,
-            nights=args.nights,
-            weekends_only=args.weekends_only,
-            excluded_site_ids=excluded_site_ids,
-            campsite_type_excluded=args.campsite_type_excluded,
+            args.show_campsite_info,
         )
 
-    output, has_availabilities = generate_json_output(info_by_park_id)
+        # If campsites.json exists, compare old data with new output by parsing JSON data
+        if os.path.exists(CAMPSITES_JSON):
+            with open(CAMPSITES_JSON, "r") as old_file:
+                try:
+                    old_json_data = json.load(old_file)
+                except json.JSONDecodeError:
+                    old_json_data = None
+            new_json_data = json.loads(output)
+            if old_json_data != new_json_data:
+                print("Differences found in campsites.json:")
+                print(output)
+                print("-" * 50)
+                print(msg)
 
-    msg, has_availabilities = generate_human_output(
-        info_by_park_id,
-        args.start_date,
-        args.end_date,
-        args.show_campsite_info,
-    )
+                # Prettify JSON output and write it to a file named "campsites.json"
+                pretty_output = json.dumps(new_json_data, indent=4)
+                with open(CAMPSITES_JSON, "w") as json_file:
+                    json_file.write(pretty_output)
 
-    # If campsites.json exists, compare old data with new output by parsing JSON data
-    if os.path.exists(CAMPSITES_JSON):
-        with open(CAMPSITES_JSON, "r") as old_file:
-            try:
-                old_json_data = json.load(old_file)
-            except json.JSONDecodeError:
-                old_json_data = None
-        new_json_data = json.loads(output)
-        if old_json_data != new_json_data:
-            print("Differences found in campsites.json:")
-            print(output)
-            print("-" * 50)
-            print(msg)
-
+                # Send a notification to the user
+                title = f"*Changed campsites availability*\n"
+                message = title + escape_markdown(msg)
+                if args.chat_id and args.bot_token:
+                    send_telegram_message(args.chat_id, args.bot_token, message)
+            else:
+                print("No differences found in campsites.json.")
+        else:
             # Prettify JSON output and write it to a file named "campsites.json"
-            pretty_output = json.dumps(new_json_data, indent=4)
+            pretty_output = json.dumps(output, indent=4)
             with open(CAMPSITES_JSON, "w") as json_file:
                 json_file.write(pretty_output)
 
-            # Send a notification to the user
-            title = f"*Changed campsites availability*\n"
-            message = title + escape_markdown(msg)
-            if args.chat_id and args.bot_token:
-                send_telegram_message(args.chat_id, args.bot_token, message)
-        else:
-            print("No differences found in campsites.json.")
-    else:
-        # Prettify JSON output and write it to a file named "campsites.json"
-        pretty_output = json.dumps(output, indent=4)
-        with open(CAMPSITES_JSON, "w") as json_file:
-            json_file.write(pretty_output)
-
-    if has_availabilities and allow_reservation:
-        #
-        # Perform the necessary Selenium operations here
-        #
-        try:
+        if has_availabilities and allow_reservation:
             #
-            # Add to cart
+            # Perform the necessary Selenium operations here
             #
-            for park_id in parks:
-                for site_id, dates in info_by_park_id[park_id][2].items():
-                    for date in merge_consecutive_dates(dates):
+            try:
+                #
+                # Add to cart
+                #
+                for park_id in parks:
+                    for site_id, dates in info_by_park_id[park_id][2].items():
+                        for date in merge_consecutive_dates(dates):
 
-                        # Format the start and end dates
-                        start_date = date["start"]
-                        end_date = date["end"]
-                        print(
-                            f"Adding site {site_id} to cart from {start_date} to {end_date}"
-                        )
-
-                        # Open the campsite page
-                        campsite_url = (
-                            f"https://www.recreation.gov/camping/campsites/{site_id}"
-                        )
-                        driver.get(campsite_url)
-                        print(f"Opened campsite page: {campsite_url}")
-
-                        # Wait for the button with class 'next-prev-button'
-                        try:
-                            WebDriverWait(driver, 10).until(
-                                EC.presence_of_element_located(
-                                    (By.CLASS_NAME, "next-prev-button")
-                                )
+                            # Format the start and end dates
+                            start_date = date["start"]
+                            end_date = date["end"]
+                            print(
+                                f"Adding site {site_id} to cart from {start_date} to {end_date}"
                             )
-                        except TimeoutException:
-                            print("Failed to load the campsite page or took too long.")
-                            continue
-                        print("Campsite page loaded.")
 
-                        # Format dates: date should look like 'April 3, 2025', not 'April 03, 2025'
-                        start_date_formatted = datetime.strptime(
-                            start_date, "%Y-%m-%d"
-                        ).strftime("%B %-d, %Y")
-                        end_date_formatted = datetime.strptime(
-                            end_date, "%Y-%m-%d"
-                        ).strftime("%B %-d, %Y")
+                            # Open the campsite page
+                            campsite_url = f"https://www.recreation.gov/camping/campsites/{site_id}"
+                            driver.get(campsite_url)
+                            print(f"Opened campsite page: {campsite_url}")
 
-                        for idx in range(5):
-                            # Find all headers with class 'heading h5-normal'
-                            headers = driver.find_elements(
-                                By.XPATH, "//h2[@class='heading h5-normal']"
-                            )
-                            print([header.text for header in headers])
-
-                            # Get the first day of next month from last header
-                            # Header looks like this: "April 2025"
-                            next_month = datetime.strptime(
-                                headers[-1].text, "%B %Y"
-                            ) + timedelta(days=31)
-                            next_month_formatted = next_month.strftime("%B %Y")
-                            print(f"Next month: {next_month_formatted}")
-
-                            # Headers look like this: "April 2025"
-                            # Check start date and end date is in the month of header
-                            is_found = False
-                            start_date_month = datetime.strptime(
-                                start_date, "%Y-%m-%d"
-                            ).strftime("%B %Y")
-                            end_date_month = datetime.strptime(
-                                end_date, "%Y-%m-%d"
-                            ).strftime("%B %Y")
-
-                            if not (
-                                any(
-                                    start_date_month in header.text
-                                    for header in headers
-                                )
-                                and any(
-                                    end_date_month in header.text for header in headers
-                                )
-                            ):
-                                print(
-                                    "Start date and end date not found in the month header."
-                                )
-                                # Find next button with class 'next-prev-button' and aria-label 'Next'
-                                next_button = driver.find_element(
-                                    By.XPATH, "//button[@aria-label='Next']"
-                                )
-                                driver.execute_script(
-                                    "arguments[0].focus();", next_button
-                                )
-                                driver.execute_script(
-                                    "arguments[0].click();", next_button
-                                )
-
-                                # Wait for the next button with class 'next-prev-button' and aria-label 'Next'
+                            # Wait for the button with class 'next-prev-button'
+                            try:
                                 WebDriverWait(driver, 10).until(
                                     EC.presence_of_element_located(
-                                        (By.XPATH, "//button[@aria-label='Next']")
+                                        (By.CLASS_NAME, "next-prev-button")
                                     )
                                 )
-
-                                continue
-                            else:
+                            except TimeoutException:
                                 print(
-                                    "Start date and end date found in the month header."
+                                    "Failed to load the campsite page or took too long."
                                 )
+                                continue
+                            print("Campsite page loaded.")
 
-                                # Find the button with the text "Clear Dates"
-                                # It cannot be existed in the page
-                                try:
-                                    clear_dates_button = driver.find_element(
-                                        By.XPATH,
-                                        "//button[.//span[text()='Clear Dates']]",
+                            # Format dates: date should look like 'April 3, 2025', not 'April 03, 2025'
+                            start_date_formatted = datetime.strptime(
+                                start_date, "%Y-%m-%d"
+                            ).strftime("%B %-d, %Y")
+                            end_date_formatted = datetime.strptime(
+                                end_date, "%Y-%m-%d"
+                            ).strftime("%B %-d, %Y")
+
+                            for idx in range(5):
+                                # Find all headers with class 'heading h5-normal'
+                                headers = driver.find_elements(
+                                    By.XPATH, "//h2[@class='heading h5-normal']"
+                                )
+                                print([header.text for header in headers])
+
+                                # Get the first day of next month from last header
+                                # Header looks like this: "April 2025"
+                                next_month = datetime.strptime(
+                                    headers[-1].text, "%B %Y"
+                                ) + timedelta(days=31)
+                                next_month_formatted = next_month.strftime("%B %Y")
+                                print(f"Next month: {next_month_formatted}")
+
+                                # Headers look like this: "April 2025"
+                                # Check start date and end date is in the month of header
+                                is_found = False
+                                start_date_month = datetime.strptime(
+                                    start_date, "%Y-%m-%d"
+                                ).strftime("%B %Y")
+                                end_date_month = datetime.strptime(
+                                    end_date, "%Y-%m-%d"
+                                ).strftime("%B %Y")
+
+                                if not (
+                                    any(
+                                        start_date_month in header.text
+                                        for header in headers
                                     )
-                                    driver.execute_script(
-                                        "arguments[0].focus();", clear_dates_button
+                                    and any(
+                                        end_date_month in header.text
+                                        for header in headers
                                     )
-                                    driver.execute_script(
-                                        "arguments[0].click();", clear_dates_button
-                                    )
-                                    print("Clear Dates button clicked.")
-                                except Exception as e:
+                                ):
                                     print(
-                                        f"Clear Dates button not found or error occurred: {e}"
+                                        "Start date and end date not found in the month header."
+                                    )
+                                    # Find next button with class 'next-prev-button' and aria-label 'Next'
+                                    next_button = driver.find_element(
+                                        By.XPATH, "//button[@aria-label='Next']"
+                                    )
+                                    driver.execute_script(
+                                        "arguments[0].focus();", next_button
+                                    )
+                                    driver.execute_script(
+                                        "arguments[0].click();", next_button
                                     )
 
-                                break
+                                    # Wait for the next button with class 'next-prev-button' and aria-label 'Next'
+                                    WebDriverWait(driver, 10).until(
+                                        EC.presence_of_element_located(
+                                            (By.XPATH, "//button[@aria-label='Next']")
+                                        )
+                                    )
 
-                        # Find the div tag where aria-label contains start_date_formatted
-                        start_date_div = driver.find_element(
-                            By.XPATH,
-                            f"//div[contains(@aria-label, '{start_date_formatted}')]",
-                        )
-                        end_date_div = driver.find_element(
-                            By.XPATH,
-                            f"//div[contains(@aria-label, '{end_date_formatted}')]",
-                        )
+                                    continue
+                                else:
+                                    print(
+                                        "Start date and end date found in the month header."
+                                    )
 
-                        print(
-                            f"Start date div: {start_date_div.get_attribute('aria-label')}"
-                        )
-                        print(
-                            f"End date div: {end_date_div.get_attribute('aria-label')}"
-                        )
+                                    # Find the button with the text "Clear Dates"
+                                    # It cannot be existed in the page
+                                    try:
+                                        clear_dates_button = driver.find_element(
+                                            By.XPATH,
+                                            "//button[.//span[text()='Clear Dates']]",
+                                        )
+                                        driver.execute_script(
+                                            "arguments[0].focus();", clear_dates_button
+                                        )
+                                        driver.execute_script(
+                                            "arguments[0].click();", clear_dates_button
+                                        )
+                                        print("Clear Dates button clicked.")
+                                    except Exception as e:
+                                        print(
+                                            f"Clear Dates button not found or error occurred: {e}"
+                                        )
 
-                        # Click the start date div
-                        driver.execute_script("arguments[0].focus();", start_date_div)
-                        driver.execute_script("arguments[0].click();", start_date_div)
-                        print("Start date div clicked.")
+                                    break
 
-                        # Click the end date div
-                        driver.execute_script("arguments[0].focus();", end_date_div)
-                        driver.execute_script("arguments[0].click();", end_date_div)
-                        print("End date div clicked.")
+                            # Find the div tag where aria-label contains start_date_formatted
+                            start_date_div = driver.find_element(
+                                By.XPATH,
+                                f"//div[contains(@aria-label, '{start_date_formatted}')]",
+                            )
+                            end_date_div = driver.find_element(
+                                By.XPATH,
+                                f"//div[contains(@aria-label, '{end_date_formatted}')]",
+                            )
 
-                        # Wait for the button with id 'add-cart-campsite'
-                        try:
+                            print(
+                                f"Start date div: {start_date_div.get_attribute('aria-label')}"
+                            )
+                            print(
+                                f"End date div: {end_date_div.get_attribute('aria-label')}"
+                            )
+
+                            # Click the start date div
+                            driver.execute_script(
+                                "arguments[0].focus();", start_date_div
+                            )
+                            driver.execute_script(
+                                "arguments[0].click();", start_date_div
+                            )
+                            print("Start date div clicked.")
+
+                            # Click the end date div
+                            driver.execute_script("arguments[0].focus();", end_date_div)
+                            driver.execute_script("arguments[0].click();", end_date_div)
+                            print("End date div clicked.")
+
+                            # Wait for the button with id 'add-cart-campsite'
+                            try:
+                                WebDriverWait(driver, 10).until(
+                                    EC.presence_of_element_located(
+                                        (By.ID, "add-cart-campsite")
+                                    )
+                                )
+                            except TimeoutException:
+                                print(
+                                    "Failed to load the add to cart button or took too long."
+                                )
+                                continue
+                            print("Add to cart button loaded.")
+
+                            # Find the button with id 'add-cart-campsite'
+                            add_to_cart_button = driver.find_element(
+                                By.ID, "add-cart-campsite"
+                            )
+                            driver.execute_script(
+                                "arguments[0].focus();", add_to_cart_button
+                            )
+                            driver.execute_script(
+                                "arguments[0].click();", add_to_cart_button
+                            )
+                            print("Add to cart button clicked.")
+
+                            # Wait for the button with class 'change-campsite-date-btn'
                             WebDriverWait(driver, 10).until(
                                 EC.presence_of_element_located(
-                                    (By.ID, "add-cart-campsite")
+                                    (By.CLASS_NAME, "change-campsite-date-btn")
                                 )
                             )
-                        except TimeoutException:
-                            print(
-                                "Failed to load the add to cart button or took too long."
-                            )
-                            continue
-                        print("Add to cart button loaded.")
+                            print("Change campsite date button loaded.")
+            except Exception as e:
+                print(f"Error during WebDriver operation: {e}")
+                continue
 
-                        # Find the button with id 'add-cart-campsite'
-                        add_to_cart_button = driver.find_element(
-                            By.ID, "add-cart-campsite"
-                        )
-                        driver.execute_script(
-                            "arguments[0].focus();", add_to_cart_button
-                        )
-                        driver.execute_script(
-                            "arguments[0].click();", add_to_cart_button
-                        )
-                        print("Add to cart button clicked.")
+        if not args.loop:
+            break
 
-                        # Wait for the button with class 'change-campsite-date-btn'
-                        WebDriverWait(driver, 10).until(
-                            EC.presence_of_element_located(
-                                (By.CLASS_NAME, "change-campsite-date-btn")
-                            )
-                        )
-                        print("Change campsite date button loaded.")
-        except Exception as e:
-            print(f"Error during WebDriver operation: {e}")
-        finally:
-            # Save current page to file
-            # with open("page_source.html", "w") as f:
-            #     f.write(driver.page_source)
+        processd_time = time() - start_time
+        print(f"Processed in {processd_time:.2f} seconds")
+        time.sleep(args.loop_interval - processd_time)
 
-            # Close the Selenium WebDriver
-            driver.quit()
+    # Close the Selenium WebDriver
+    driver.quit()
 
 
 if __name__ == "__main__":
