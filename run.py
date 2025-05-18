@@ -603,6 +603,7 @@ def main(parks, json_output=False):
     is_odd = False
 
     while True:
+        print("-" * 50, flush=True)
         start_time = time()
 
         stay_signed_in = (
