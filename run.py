@@ -890,3 +890,4 @@ if __name__ == "__main__":
         LOG.setLevel(logging.DEBUG)
 
     main(args.parks, json_output=args.json_output)
+    print("Exiting...")
