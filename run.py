@@ -5,11 +5,11 @@ import json
 import logging
 import os
 import sys
-import time
 import urllib
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import count, groupby
+from time import time
 
 import requests
 from dateutil import rrule
