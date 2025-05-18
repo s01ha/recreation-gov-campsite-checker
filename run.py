@@ -9,7 +9,7 @@ import urllib
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import count, groupby
-from time import time
+from time import sleep, time
 
 import requests
 from dateutil import rrule
@@ -873,7 +873,7 @@ def main(parks, json_output=False):
 
         processd_time = time() - start_time
         print(f"Processed in {processd_time:.2f} seconds")
-        time.sleep(args.loop_interval - processd_time)
+        sleep(args.loop_interval - processd_time)
 
     # Close the Selenium WebDriver
     driver.quit()
