@@ -147,7 +147,7 @@ def main(args):
         try:
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located(
-                    (By.PATH, "//button[@aria-label='Add Five Minutes']")
+                    (By.XPATH, "//button[@aria-label='Add Five Minutes']")
                 )
             )
             LOG.info("Cart page loaded successfully.")
