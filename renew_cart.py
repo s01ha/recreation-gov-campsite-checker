@@ -144,7 +144,7 @@ if __name__ == "__main__":
     if args.debug:
         LOG.setLevel(logging.DEBUG)
 
-    LOG.info(datetime.now(), "-" * 80)
+    LOG.info("-" * 80)
     LOG.info(args)
 
     main(args)
