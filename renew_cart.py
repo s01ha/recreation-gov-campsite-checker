@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import time
 from datetime import datetime
 
 import requests
@@ -125,15 +126,15 @@ def main(args):
         LOG.info("Selenium WebDriver instance created successfully.")
         # Perform cart renewal logic here
 
-        driver.get("https://www.recreation.gov/")
+        driver.get("https://fast.com/")
+        time.sleep(5)
 
         # Close the driver after use
         driver.quit()
+        LOG.info("Selenium WebDriver instance closed.")
     else:
         LOG.info("Failed to create Selenium WebDriver instance.")
 
-    driver.quit()
-    LOG.info("Selenium WebDriver instance closed.")
     return
 
 
