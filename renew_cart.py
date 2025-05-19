@@ -7,6 +7,10 @@ from datetime import datetime
 
 import requests
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 LOG = logging.getLogger(__name__)
 log_formatter = logging.Formatter(
@@ -129,11 +133,36 @@ def main(args):
         LOG.info("Selenium WebDriver instance created successfully.")
         # Perform cart renewal logic here
 
+        # login to Recreation.gov using the provided username and password
         run.login(
             driver=driver,
             username=args.username,
             password=args.password,
         )
+
+        # Load the cart page
+        driver.get("https://www.recreation.gov/cart")
+
+        # Wait for the page to load: <h1 class="cart-page-title">
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "cart-page-title"))
+            )
+            LOG.info("Cart page loaded successfully.")
+        except TimeoutException:
+            LOG.error("Timed out waiting for cart page to load.")
+            driver.quit()
+            LOG.info("Selenium WebDriver instance closed.")
+            return
+
+        renew_cart_button = driver.find_element(
+            By.XPATH, "//button[@aria-label='Add Five Minutes']"
+        )
+        if renew_cart_button:
+            driver.execute_script("arguments[0].focus();", renew_cart_button)
+            driver.execute_script("arguments[0].click();", renew_cart_button)
+        else:
+            LOG.error("Renew cart button not found.")
 
         # Close the driver after use
         driver.quit()
