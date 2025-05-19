@@ -146,7 +146,9 @@ def main(args):
         # Wait for the page to load: <h1 class="cart-page-title">
         try:
             WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.CLASS_NAME, "cart-page-title"))
+                EC.presence_of_element_located(
+                    (By.PATH, "//button[@aria-label='Add Five Minutes']")
+                )
             )
             LOG.info("Cart page loaded successfully.")
         except TimeoutException:
