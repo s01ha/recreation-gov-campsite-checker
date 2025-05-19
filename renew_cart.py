@@ -109,6 +109,9 @@ def create_selenium_driver(selenium_host, selenium_port):
         return None
 
 
+import run
+
+
 def main(args):
     """
     Main function to renew the cart.
@@ -126,8 +129,11 @@ def main(args):
         LOG.info("Selenium WebDriver instance created successfully.")
         # Perform cart renewal logic here
 
-        driver.get("https://fast.com/")
-        time.sleep(5)
+        run.login(
+            driver=driver,
+            username=args.username,
+            password=args.password,
+        )
 
         # Close the driver after use
         driver.quit()
