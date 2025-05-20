@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import argparse
 import logging
+import random
 import time
 from datetime import datetime
 
@@ -141,7 +142,16 @@ def main(args):
         )
 
         # Load the cart page
-        driver.get("https://www.recreation.gov/cart")
+        url = random.choice(
+            [
+                "https://www.recreation.gov/cart",
+                "https://www.recreation.gov/account/reservations/upcoming",
+                "https://www.recreation.gov/account/passes",
+                "https://www.recreation.gov/account/profile",
+            ]
+        )
+        LOG.info(f"Loading URL: {url}")
+        driver.get(url)
 
         # Wait for the page to load: <h1 class="cart-page-title">
         try:
@@ -163,6 +173,8 @@ def main(args):
         if renew_cart_button:
             driver.execute_script("arguments[0].focus();", renew_cart_button)
             driver.execute_script("arguments[0].click();", renew_cart_button)
+            LOG.info("Renew cart button clicked.")
+            time.sleep(2)
         else:
             LOG.error("Renew cart button not found.")
 
