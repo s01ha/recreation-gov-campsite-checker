@@ -657,7 +657,7 @@ def main(parks, json_output=False):
                     json_file.write(pretty_output)
 
                 # Send a notification to the user
-                title = f"*Changed campsites availability*\n"
+                title = f"*Changed campsites availability*\n{args.username}\n"
                 message = title + escape_markdown(msg)
                 if args.chat_id and args.bot_token:
                     send_telegram_message(args.chat_id, args.bot_token, message)
