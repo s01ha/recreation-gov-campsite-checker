@@ -866,7 +866,7 @@ def main(parks, json_output=False):
                             # Send a message to Telegram
                             # Message contains username, date range, and campsite URL
                             message = (
-                                f"{args.username}\n"
+                                f"User: {args.username}\n"
                                 f"Added campsite {site_id} to cart from {start_date} to {end_date}\n"
                                 f"Link: {campsite_url}"
                             )
