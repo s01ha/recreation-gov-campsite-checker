@@ -7,7 +7,7 @@ services:
     depends_on:
       - selenium
   selenium:
-    image: selenium/standalone-chrome:latest
+    image: selenium/standalone-chromium:latest
     shm_size: 2gb
     environment:
       - SE_NODE_MAX_SESSIONS=2
