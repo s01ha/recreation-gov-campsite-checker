@@ -1,1 +1,2 @@
 * * * * *   /usr/bin/flock -n /tmp/myjob.lockfile /app/run.sh
+* * * * *   (sleep 30; /app/renew_cart.sh)

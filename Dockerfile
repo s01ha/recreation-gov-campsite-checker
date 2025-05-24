@@ -12,9 +12,9 @@ COPY clients /app/clients
 COPY enums /app/enums
 COPY other /app/other
 COPY utils /app/utils
-COPY run.sh /app/run.sh
+COPY *.sh /app/
 COPY crontab /etc/cron.d/crontab
-RUN chmod +x /app/run.sh
+RUN chmod +x /app/*.sh
 RUN chmod 0644 /etc/cron.d/crontab
 RUN /usr/bin/crontab /etc/cron.d/crontab
 

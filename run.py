@@ -657,8 +657,8 @@ def main(parks, json_output=False):
                     json_file.write(pretty_output)
 
                 # Send a notification to the user
-                title = f"*Changed campsites availability*\n"
-                message = title + escape_markdown(msg)
+                title = "*Changed campsites availability*\n"
+                message = title + escape_markdown(f"{args.username}\n" + msg)
                 if args.chat_id and args.bot_token:
                     send_telegram_message(args.chat_id, args.bot_token, message)
             else:
@@ -866,7 +866,7 @@ def main(parks, json_output=False):
                             # Send a message to Telegram
                             # Message contains username, date range, and campsite URL
                             message = (
-                                f"{args.username}\n"
+                                f"User: {args.username}\n"
                                 f"Added campsite {site_id} to cart from {start_date} to {end_date}\n"
                                 f"Link: {campsite_url}"
                             )
