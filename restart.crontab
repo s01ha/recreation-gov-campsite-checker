@@ -1,0 +1,1 @@
+0 */12 * * *	/container/recreation-gov-campsite-checker/restart.sh >> /container/recreation-gov-campsite-checker/cron.log 2>&1
