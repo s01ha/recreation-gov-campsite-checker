@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 
+import asyncio
 import json
 import logging
 import os
@@ -606,13 +607,33 @@ def main(parks, json_output=False):
         print("-" * 50, flush=True)
         start_time = time()
 
-        stay_signed_in = (
-            "https://www.recreation.gov/cart"
-            if is_odd
-            else "https://www.recreation.gov/account/profile"
-        )
+        async def keep_session_alive(driver, is_odd, username, password):
+            stay_signed_in = (
+                "https://www.recreation.gov/cart"
+                if is_odd
+                else "https://www.recreation.gov/account/profile"
+            )
+            driver.get(stay_signed_in)
+
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(
+                        (By.XPATH, "//button[@aria-label='My Account']")
+                    )
+                )
+            except TimeoutException:
+                print(
+                    "Page did not load properly or took too long. Trying to log in again."
+                )
+                if not login(driver, username, password):
+                    print("Login failed. Exiting.")
+                    sys.exit(1)
+            print("Page loaded successfully.")
+            print(f"Logged in as {username}")
+
+        # 비동기 함수 실행
+        asyncio.run(keep_session_alive(driver, is_odd, args.username, args.password))
         is_odd = not is_odd
-        driver.get(stay_signed_in)
 
         info_by_park_id = {}
         for park_id in parks:
